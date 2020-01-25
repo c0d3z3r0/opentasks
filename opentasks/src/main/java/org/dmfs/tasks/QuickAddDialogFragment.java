@@ -55,7 +55,6 @@ import org.dmfs.tasks.contract.TaskContract.Tasks;
 import org.dmfs.tasks.model.ContentSet;
 import org.dmfs.tasks.model.TaskFieldAdapters;
 import org.dmfs.tasks.utils.RecentlyUsedLists;
-import org.dmfs.tasks.utils.SafeFragmentUiRunnable;
 import org.dmfs.tasks.utils.TasksListCursorSpinnerAdapter;
 
 
@@ -68,16 +67,6 @@ import org.dmfs.tasks.utils.TasksListCursorSpinnerAdapter;
 public class QuickAddDialogFragment extends SupportDialogFragment
         implements OnEditorActionListener, LoaderManager.LoaderCallbacks<Cursor>, OnItemSelectedListener, OnClickListener, TextWatcher
 {
-
-    /**
-     * The minimal duration for the "Task completed" info to be visible
-     */
-    private final static int COMPLETION_DELAY_BASE = 500; // ms
-
-    /**
-     * The maximum time to add for the first time the "Task completed" info is shown.
-     */
-    private final static int COMPLETION_DELAY_MAX = 1500; // ms
 
     private final static String ARG_LIST_ID = "list_id";
     private final static String ARG_CONTENT = "content";
@@ -133,13 +122,10 @@ public class QuickAddDialogFragment extends SupportDialogFragment
     @Retain(permanent = true, key = "quick_add_save_count", classNS = "")
     private int mSaveCounter = 0;
 
-    private boolean mClosing;
-
     private View mColorBackground;
     private Spinner mListSpinner;
 
     private EditText mEditText;
-    private View mConfirmation;
     private View mContent;
 
     private View mSaveButton;
@@ -234,7 +220,6 @@ public class QuickAddDialogFragment extends SupportDialogFragment
         mEditText.setOnEditorActionListener(this);
         mEditText.addTextChangedListener(this);
 
-        mConfirmation = view.findViewById(R.id.created_confirmation);
         mContent = view.findViewById(R.id.content);
 
         mSaveButton = view.findViewById(android.R.id.button1);
@@ -300,8 +285,8 @@ public class QuickAddDialogFragment extends SupportDialogFragment
     {
         if (EditorInfo.IME_ACTION_DONE == actionId)
         {
-            notifyUser(true /* close afterwards */);
             createTask();
+            dismiss();
             return true;
         }
         return false;
@@ -390,14 +375,22 @@ public class QuickAddDialogFragment extends SupportDialogFragment
         if (id == android.R.id.button1)
         {
             // "save" pressed
-            notifyUser(true /* close afterwards */);
             createTask();
+            dismiss();
         }
         else if (id == android.R.id.button2)
         {
             // "save and continue" pressed
-            notifyUser(false /* reset view */);
             createTask();
+
+            // reset text field
+            mEditText.getText().clear();
+
+            // bring the keyboard up again
+            mEditText.requestFocus();
+            InputMethodManager inputMethodManager = (InputMethodManager)
+                getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+            inputMethodManager.showSoftInput(mEditText, 0);
         }
         else if (id == android.R.id.edit)
         {
@@ -428,73 +421,4 @@ public class QuickAddDialogFragment extends SupportDialogFragment
         mSaveButton.setEnabled(enabled);
         mSaveAndNextButton.setEnabled(enabled);
     }
-
-
-    private void notifyUser(boolean close)
-    {
-        mContent.animate().alpha(0).setDuration(250).start();
-        mConfirmation.setAlpha(0);
-        mConfirmation.setVisibility(View.VISIBLE);
-        mConfirmation.animate().alpha(1).setDuration(250).start();
-
-        if (close)
-        {
-            delayedDismiss();
-        }
-        else
-        {
-            // We use a dynamic duration. When you hit "save & continue" for the very first time we use a rather long delay, that gets closer to
-            // COMPLETION_DELAY_BASE with every time you do that.
-            int duration = COMPLETION_DELAY_BASE + COMPLETION_DELAY_MAX / ++mSaveCounter;
-            mContent.postDelayed(mReset, duration);
-        }
-    }
-
-
-    private void delayedDismiss()
-    {
-        mContent.postDelayed(mDismiss, 1000);
-        mClosing = true;
-    }
-
-
-    @Override
-    public void onPause()
-    {
-        super.onPause();
-        if (mClosing)
-        {
-            mContent.removeCallbacks(mDismiss);
-            dismiss();
-        }
-    }
-
-
-    /**
-     * A {@link Runnable} that closes the dialog.
-     */
-    private final Runnable mDismiss = new SafeFragmentUiRunnable(this, this::dismiss);
-
-    /**
-     * A {@link Runnable} that resets the editor view.
-     */
-    private final Runnable mReset = new SafeFragmentUiRunnable(this, new Runnable()
-    {
-        @Override
-        public void run()
-        {
-            mContent.animate().alpha(1).setDuration(250).start();
-            mConfirmation.animate().alpha(0).setDuration(250).start();
-            mSaveButton.setEnabled(true);
-            mSaveAndNextButton.setEnabled(true);
-
-            // reset view
-            mEditText.selectAll();
-
-            // bring the keyboard up again
-            mEditText.requestFocus();
-            InputMethodManager inputMethodManager = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-            inputMethodManager.showSoftInput(mEditText, 0);
-        }
-    });
 }

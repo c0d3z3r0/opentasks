@@ -64,18 +64,6 @@
                         android:text="@string/action_save_and_continue"/>
             </LinearLayout>
         </LinearLayout>
-
-        <TextView
-                android:id="@+id/created_confirmation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:drawableLeft="@drawable/ic_checkmark_light"
-                android:drawableStart="@drawable/ic_checkmark_light"
-                android:gravity="center"
-                android:text="@string/quick_add_task_created"
-                android:textAppearance="?android:attr/textAppearanceLarge"
-                android:visibility="invisible"/>
     </FrameLayout>
 
 </LinearLayout>
